@@ -65,7 +65,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x ./scripts/export.sh
-          ./scripts/export.sh
+          OPENSCAD_FA=12 OPENSCAD_FS=1 ./scripts/export.sh
 
       - name: Package STLs
         if: steps.major.outputs.is_major == 'true'

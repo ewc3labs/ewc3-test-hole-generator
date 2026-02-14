@@ -1,6 +1,8 @@
 Param(
   [string]$OpenScadExe = "C:\\Program Files\\OpenSCAD\\openscad.exe",
-  [string]$FontDir
+  [string]$FontDir,
+  [Nullable[int]]$Fa,
+  [Nullable[double]]$Fs
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,6 +20,14 @@ if (Test-Path -LiteralPath $FontDir) {
   $FontArgs = @('--fontdir', $FontDir)
 }
 
+$QualityArgs = @()
+if ($null -ne $Fa) {
+  $QualityArgs += @('-D', "`$fa=$Fa")
+}
+if ($null -ne $Fs) {
+  $QualityArgs += @('-D', "`$fs=$Fs")
+}
+
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 function Export-One {
@@ -26,7 +36,7 @@ function Export-One {
     [string[]]$Args
   )
 
-  & $OpenScadExe @FontArgs -o (Join-Path $OutDir $OutFile) $Src @Args
+  & $OpenScadExe @FontArgs @QualityArgs -o (Join-Path $OutDir $OutFile) $Src @Args
 }
 
 Export-One -OutFile 'Test_Hole_Generator_Circle50to1095step05.stl' -Args @(

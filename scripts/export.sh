@@ -36,9 +36,21 @@ fi
 
 mkdir -p "$OUT_DIR"
 
+# Quality controls
+# By default, the SCAD file's $fa/$fs are used.
+# To speed up CI or quick local exports, you can override them:
+#   OPENSCAD_FA=12 OPENSCAD_FS=1 ./scripts/export.sh
+SCAD_GLOBAL_ARGS=()
+if [[ -n "${OPENSCAD_FA:-}" ]]; then
+  SCAD_GLOBAL_ARGS+=( -D "\$fa=${OPENSCAD_FA}" )
+fi
+if [[ -n "${OPENSCAD_FS:-}" ]]; then
+  SCAD_GLOBAL_ARGS+=( -D "\$fs=${OPENSCAD_FS}" )
+fi
+
 export_one() {
   local out="$1"; shift
-  "$OPENSCAD_EXE" "${FONTDIR_ARGS[@]}" -o "$OUT_DIR/$out" "$SRC" "$@"
+  "$OPENSCAD_EXE" "${FONTDIR_ARGS[@]}" "${SCAD_GLOBAL_ARGS[@]}" -o "$OUT_DIR/$out" "$SRC" "$@"
 }
 
 # Example exports matching the historical naming pattern.

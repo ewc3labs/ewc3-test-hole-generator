@@ -29,7 +29,7 @@ plate_shape = "rectangle"; // [trapezoid, rectangle]
 // Height of the embossed text
 text_size = 5.0; // [0.5:0.1:20]
 // Top labels (column offsets) are rendered smaller than row labels
-top_text_scale = 0.75; // [0.30:0.05:1.50]
+top_text_scale = 0.85; // [0.30:0.05:1.50]
 // Padding between the label block and the first column of holes
 label_padding = 1.0; // [0:0.1:25]
 // Typeface preset (avoids font-install docs; pick what your OS likely has)
@@ -222,6 +222,12 @@ function row_center(row_num) =
 function row_bottom(row_num) = row_center(row_num) - (row_band_height(row_num) / 2);
 function row_top(row_num) = row_center(row_num) + (row_band_height(row_num) / 2);
 
+// Hole extents within a row (excludes label-only band). Using these for the
+// trapezoid edge fit avoids over-constraining the right edge when text bands
+// are taller than the holes.
+function row_hole_bottom(row_num) = row_center(row_num) - (row_height(row_num) / 2);
+function row_hole_top(row_num) = row_center(row_num) + (row_height(row_num) / 2);
+
 function clamp_safe(v, lo, hi) = (hi < lo) ? lo : min(max(v, lo), hi);
 
 // Column-center X positions (based on row 0 so the offsets align with the size progression)
@@ -276,7 +282,7 @@ function max_list(values) = (values == undef || len(values) == 0) ? 0 : max(valu
 function idx0(count) = (count == undef || count <= 0) ? [] : [0:count - 1];
 
 function right_edge_c_for_a(a) =
-    max_list([for (r = idx0(number_of_rows)) row_width(r) - a * row_bottom(r)]);
+    max_list([for (r = idx0(number_of_rows)) row_width(r) - a * row_hole_bottom(r)]);
 
 function right_edge_area_for_a(a) =
     let(
@@ -301,8 +307,8 @@ function candidate_slopes() =
             for (i = idx0(number_of_rows))
             for (j = idx0(number_of_rows))
             let(
-                yi = row_bottom(i),
-                yj = row_bottom(j),
+                yi = row_hole_bottom(i),
+                yj = row_hole_bottom(j),
                 xi = row_width(i),
                 xj = row_width(j),
                 dy = yj - yi
@@ -324,8 +330,26 @@ function trapezoid_points() =
     let(
         H = trapezoid_height(),
         x0 = right_edge_c,
-        xH = right_edge_a * H + right_edge_c
-    ) [[0, 0], [x0, 0], [xH, H], [0, H]];
+        xH = right_edge_a * H + right_edge_c,
+        top_row = last_row(),
+        top_last_col = holes_per_row - 1,
+        top_last_hole = hole_number(top_row, top_last_col),
+        top_last_center_x = col_center_x_for_row(top_row, top_last_col),
+        top_last_measured_w = measured_hole_width(top_last_hole),
+        // "Cell" right edge ≈ hole right edge plus half the inter-hole spacing.
+        // This gives a reasonable pad so the right wall isn't kissing the hole.
+        cell_pad = (holes_per_row > 1) ? (hole_spacing / 2) : 0,
+        x_vert_raw = top_last_center_x + (top_last_measured_w / 2) + cell_pad + right_margin,
+        // Never cut left of the trapezoid's bottom-right x.
+        x_vert = max(x_vert_raw, x0),
+        y_int_raw = (right_edge_a == 0) ? H : ((x_vert - right_edge_c) / right_edge_a),
+        y_int = clamp_safe(y_int_raw, 0, H)
+    )
+    // Prevent a sharp/acute top-right corner by truncating the slanted edge
+    // with a vertical segment located near the top-right hole's cell.
+    (right_edge_a == 0 || x_vert >= xH || y_int >= H) ?
+        [[0, 0], [x0, 0], [xH, H], [0, H]] :
+        [[0, 0], [x0, 0], [x_vert, y_int], [x_vert, H], [0, H]];
 
 function plate_points() = (plate_shape == "rectangle") ? rectangle_points() : trapezoid_points();
 

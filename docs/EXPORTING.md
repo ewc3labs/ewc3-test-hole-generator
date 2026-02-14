@@ -36,3 +36,11 @@ You can override the fonts directory:
 ## Notes
 - OpenSCAD output depends on `$fa`/`$fs` and CGAL; keep these stable for reproducible artifacts.
 - If you change geometry-affecting defaults, bump the artifact filenames or add new ones.
+
+## Quality / speed overrides
+If you don't care about visible circle faceting and want faster exports, you can override `$fa`/`$fs` at export time.
+
+- Bash:
+  - `OPENSCAD_FA=12 OPENSCAD_FS=1 ./scripts/export.sh`
+- PowerShell:
+  - `./scripts/export.ps1 -Fa 12 -Fs 1`
