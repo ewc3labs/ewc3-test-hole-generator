@@ -39,16 +39,34 @@ function Export-One {
   & $OpenScadExe @FontArgs @QualityArgs -o (Join-Path $OutDir $OutFile) $Src @Args
 }
 
-Export-One -OutFile 'Test_Hole_Generator_Circle50to1095step05.stl' -Args @(
-  '-D','initial_hole_size=5','-D','final_hole_size=10.95','-D','hole_step_size=0.05','-D','hole_type="circle"'
+# Canonical export preset (keep stable; do not rely on SCAD defaults)
+$CommonArgs = @(
+  '-D','holes_per_row=10',
+  '-D','hole_spacing=3.0',
+  '-D','plate_shape="trapezoid"',
+  '-D','plate_thickness=5.0',
+  '-D','text_size=4.0',
+  '-D','top_text_scale=0.85',
+  '-D','text_height=-1.5',
+  '-D','left_margin=3.0',
+  '-D','right_margin=3.0',
+  '-D','top_margin=3.0',
+  '-D','bottom_margin=3.0',
+  '-D','label_padding=1.0',
+  '-D','typeface_preset="liberation_sans_bold"',
+  '-D','typeface_custom="Liberation Sans:style=Bold"'
+)
+
+Export-One -OutFile 'Test_Hole_Generator_Circle70to1095step05.stl' -Args @(
+  $CommonArgs + @('-D','initial_hole_size=7','-D','final_hole_size=10.95','-D','hole_step_size=0.05','-D','hole_type="circle"')
 )
 
 Export-One -OutFile 'Test_Hole_Generator_Hex50to1095step05.stl' -Args @(
-  '-D','initial_hole_size=5','-D','final_hole_size=10.95','-D','hole_step_size=0.05','-D','hole_type="hexagon"'
+  $CommonArgs + @('-D','initial_hole_size=5','-D','final_hole_size=10.95','-D','hole_step_size=0.05','-D','hole_type="hexagon"')
 )
 
-Export-One -OutFile 'Test_Hole_Generator_Circle30to995step05.stl' -Args @(
-  '-D','initial_hole_size=3','-D','final_hole_size=9.95','-D','hole_step_size=0.05','-D','hole_type="circle"'
+Export-One -OutFile 'Test_Hole_Generator_Circle30to695step05.stl' -Args @(
+  $CommonArgs + @('-D','initial_hole_size=3','-D','final_hole_size=6.95','-D','hole_step_size=0.05','-D','hole_type="circle"')
 )
 
 Write-Host "OK: exported STLs to $OutDir"
