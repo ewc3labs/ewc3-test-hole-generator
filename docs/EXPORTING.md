@@ -24,6 +24,9 @@ This repo includes convenience scripts:
 
 They export one or more known-good STL configurations into `exports/stl/`.
 
+## CI regeneration
+This repo also includes a GitHub Actions workflow that regenerates `exports/stl/` on pushes to `main` (when `src/` or `scripts/` change) and commits the updated STL artifacts back to `main`.
+
 ## Fonts
 OpenSCAD’s GUI generally only sees system-installed fonts.
 
