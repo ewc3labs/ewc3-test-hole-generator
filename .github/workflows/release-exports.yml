@@ -6,9 +6,13 @@ on:
   workflow_dispatch:
     inputs:
       force:
-        description: 'Force export even if tag is not vX.0.0'
+        description: 'Force export even if no relevant files changed'
         required: false
         default: 'false'
+      tag:
+        description: 'Release tag to upload assets to (workflow_dispatch only)'
+        required: false
+        default: ''
 
 jobs:
   export-and-upload:
@@ -19,48 +23,72 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Determine if this is a major release
-        id: major
+      - name: Determine whether exports need regeneration
+        id: regen
         shell: bash
         run: |
           set -euo pipefail
-          tag="${{ github.event.release.tag_name }}"
-          force="${{ inputs.force }}"
+          force="${{ github.event_name == 'workflow_dispatch' && inputs.force || 'false' }}"
 
-          if [[ "${force}" == "true" ]]; then
-            echo "is_major=true" >> "$GITHUB_OUTPUT"
-            echo "tag=${tag:-manual}" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            tag="${{ github.event.release.tag_name }}"
+          else
+            tag="${{ inputs.tag }}"
           fi
 
           if [[ -z "${tag}" ]]; then
-            echo "is_major=false" >> "$GITHUB_OUTPUT"
+            echo "should_regen=false" >> "$GITHUB_OUTPUT"
             echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "reason=No tag provided." >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          if [[ "$tag" =~ ^v([0-9]+)\.0\.0$ ]]; then
-            echo "is_major=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_major=false" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+
+          if [[ "${force}" == "true" ]]; then
+            echo "should_regen=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Forced by workflow input." >> "$GITHUB_OUTPUT"
+            exit 0
           fi
 
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          # Find previous v* tag (semver-ish) to diff against.
+          prev_tag="$(git tag -l 'v*' --sort=-v:refname | grep -v -F "${tag}" | head -n 1 || true)"
 
-      - name: Skip (not a major release)
-        if: steps.major.outputs.is_major != 'true'
-        run: echo "Not a major release (expected tag vX.0.0). Skipping export."
+          if [[ -z "${prev_tag}" ]]; then
+            echo "should_regen=true" >> "$GITHUB_OUTPUT"
+            echo "reason=No previous tag found." >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "prev_tag=${prev_tag}" >> "$GITHUB_OUTPUT"
+
+          changed="$(git diff --name-only "${prev_tag}" "${tag}" -- src scripts fonts | wc -l | tr -d ' ')"
+          if [[ "${changed}" != "0" ]]; then
+            echo "should_regen=true" >> "$GITHUB_OUTPUT"
+            echo "reason=Relevant files changed (${changed} file(s))." >> "$GITHUB_OUTPUT"
+          else
+            echo "should_regen=false" >> "$GITHUB_OUTPUT"
+            echo "reason=No changes under src/scripts/fonts since ${prev_tag}." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip (no regeneration needed)
+        if: steps.regen.outputs.should_regen != 'true'
+        run: |
+          echo "Skipping export."
+          echo "Reason: ${{ steps.regen.outputs.reason }}"
 
       - name: Install OpenSCAD + common fonts
-        if: steps.major.outputs.is_major == 'true'
+        if: steps.regen.outputs.should_regen == 'true'
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y openscad fonts-liberation fonts-dejavu-core zip
 
       - name: Export STLs
-        if: steps.major.outputs.is_major == 'true'
+        if: steps.regen.outputs.should_regen == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -68,17 +96,18 @@ jobs:
           OPENSCAD_FA=12 OPENSCAD_FS=1 ./scripts/export.sh
 
       - name: Package STLs
-        if: steps.major.outputs.is_major == 'true'
+        if: steps.regen.outputs.should_regen == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          tag="${{ steps.major.outputs.tag }}"
+          tag="${{ steps.regen.outputs.tag }}"
           zip -j "exports/stl/ewc3-test-hole-generator-${tag}-stl.zip" exports/stl/*.stl
 
       - name: Upload release assets
-        if: steps.major.outputs.is_major == 'true'
+        if: steps.regen.outputs.should_regen == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.regen.outputs.tag }}
           files: |
             exports/stl/*.stl
             exports/stl/*.zip
