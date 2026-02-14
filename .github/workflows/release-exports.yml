@@ -55,7 +55,7 @@ jobs:
           fi
 
           # Find previous v* tag (semver-ish) to diff against.
-          prev_tag="$(git tag -l 'v*' --sort=-v:refname | grep -v -F "${tag}" | head -n 1 || true)"
+          prev_tag="$(git tag -l --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | grep -v -F "${tag}" | head -n 1 || true)"
 
           if [[ -z "${prev_tag}" ]]; then
             echo "should_regen=true" >> "$GITHUB_OUTPUT"
@@ -102,6 +102,61 @@ jobs:
           set -euo pipefail
           tag="${{ steps.regen.outputs.tag }}"
           zip -j "exports/stl/ewc3-test-hole-generator-${tag}-stl.zip" exports/stl/*.stl
+
+      - name: Collect asset names
+        if: steps.regen.outputs.should_regen == 'true'
+        id: assets
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          {
+            echo 'names<<EOF'
+            for f in exports/stl/*.stl exports/stl/*.zip; do
+              test -e "$f" || continue
+              basename "$f"
+            done
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Delete existing assets with same names
+        if: steps.regen.outputs.should_regen == 'true'
+        uses: actions/github-script@v7
+        env:
+          ASSET_NAMES: ${{ steps.assets.outputs.names }}
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const tag = `${{ steps.regen.outputs.tag }}`;
+            const raw = process.env.ASSET_NAMES || '';
+            const desired = raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+
+            if (!tag) {
+              core.info('No tag; skipping asset deletion.');
+              return;
+            }
+            if (desired.length === 0) {
+              core.info('No assets to upload; skipping asset deletion.');
+              return;
+            }
+
+            const desiredSet = new Set(desired);
+            core.info(`Will replace ${desired.length} asset(s) on release ${tag}.`);
+
+            const rel = await github.rest.repos.getReleaseByTag({ owner, repo, tag });
+            const assets = rel.data.assets || [];
+            const toDelete = assets.filter(a => desiredSet.has(a.name));
+
+            if (toDelete.length === 0) {
+              core.info('No matching existing assets to delete.');
+              return;
+            }
+
+            for (const asset of toDelete) {
+              core.info(`Deleting existing asset: ${asset.name}`);
+              await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: asset.id });
+            }
 
       - name: Upload release assets
         if: steps.regen.outputs.should_regen == 'true'
