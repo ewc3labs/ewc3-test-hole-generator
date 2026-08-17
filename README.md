@@ -6,7 +6,8 @@
 
 Parametric test-hole plate generator for 3D printing.
 
-This repo is intended to be cross-post friendly (GitHub + Printables + Thingiverse): source is in `src/`, and ready-to-print exports are in `exports/`.
+This repo is intended to be cross-post friendly (GitHub + Printables + Thingiverse): source is in
+`src/`, and ready-to-print exports are in `exports/`.
 
 ## Photos
 - `images/printed_plate_1.jpg` (REQUIRED before public release)
@@ -31,7 +32,8 @@ Elephant’s foot will undersize holes and can force you to deburr dozens of edg
 - Elephant foot compensation (e.g., OrcaSlicer) SHOULD be set unusually high for this part.
 - If your slicer uses “First layer X-Y compensation” (or similar wording), use that.
 - A starting point is **0.5 mm**; tune up/down for your material and first-layer squish.
-- A brim SHOULD be used on plates this large to prevent warping; “easy to separate” brims defeat the purpose so space the brim .02 from the part so it actually sticks.
+- A brim SHOULD be used on plates this large to prevent warping; “easy to separate” brims defeat the
+  purpose so space the brim .02 from the part so it actually sticks.
 
 ## Files
 

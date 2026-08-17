@@ -25,12 +25,14 @@ This repo includes convenience scripts:
 They export one or more known-good STL configurations into `exports/stl/`.
 
 ## CI regeneration
-This repo also includes a GitHub Actions workflow that regenerates `exports/stl/` on pushes to `main` (when `src/` or `scripts/` change) and commits the updated STL artifacts back to `main`.
+This repo also includes a GitHub Actions workflow that regenerates `exports/stl/` on pushes to
+`main` (when `src/` or `scripts/` change) and commits the updated STL artifacts back to `main`.
 
 ## Fonts
 OpenSCAD’s GUI generally only sees system-installed fonts.
 
-For deterministic CLI exports (and to support a “repo-local `fonts/` folder”), the export scripts pass `--fontdir` when a `fonts/` directory exists at the repo root.
+For deterministic CLI exports (and to support a “repo-local `fonts/` folder”), the export scripts
+pass `--fontdir` when a `fonts/` directory exists at the repo root.
 
 You can override the fonts directory:
 - Bash: `OPENSCAD_FONTDIR="/abs/path/to/fonts" ./scripts/export.sh`
@@ -41,7 +43,8 @@ You can override the fonts directory:
 - If you change geometry-affecting defaults, bump the artifact filenames or add new ones.
 
 ## Quality / speed overrides
-If you don't care about visible circle faceting and want faster exports, you can override `$fa`/`$fs` at export time.
+If you don't care about visible circle faceting and want faster exports, you can override
+`$fa`/`$fs` at export time.
 
 - Bash:
   - `OPENSCAD_FA=12 OPENSCAD_FS=1 ./scripts/export.sh`
